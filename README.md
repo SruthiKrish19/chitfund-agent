@@ -63,6 +63,58 @@ Click **Seed demo circle** to create "Anna Nagar Friends Circle" (6 members, $50
 
 Testing credentials and a hosted URL are in the Devpost submission's testing instructions. The app also runs fully locally with the steps above.
 
+## Hosted demo vs running locally
+
+The hosted demo at https://chitfund-agent.vercel.app has **no AI API credits**, so circle parsing, reminder text and the assistant run in deterministic **sample / fallback mode** (a banner on every page says so). The circle marked **SAMPLE** is seeded for reviewers and already has two cycles of real PayPal sandbox activity: invoices sent, payments recorded, reminders, a lottery draw and real Payouts. You can still create circles, run cycles and ask the assistant on the hosted instance; everything PayPal-side is real sandbox traffic.
+
+To see the Claude paths (structured parsing of the circle description, personalised reminders, tool-use chat over the PayPal Agent Toolkit), run it locally with your own keys:
+
+```bash
+git clone https://github.com/SruthiKrish19/chitfund-agent && cd chitfund-agent
+npm install
+cp .env.example .env.local   # then fill in the variables below
+npm run dev                  # http://localhost:3000
+```
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | yes | Sandbox REST app used for Invoicing v2, recurring series and Transaction Search |
+| `PAYPAL_ENV` | yes | `sandbox` |
+| `PAYPAL_US_CLIENT_ID`, `PAYPAL_US_CLIENT_SECRET` | for payouts | A US-region sandbox app; non-US sandbox accounts cannot send Payouts. Falls back to the main app with a `PENDING_REGION` status |
+| `PAYPAL_DEMO_PAYER_EMAIL` | optional | Sandbox email that receives the first member's real invoices |
+| `ANTHROPIC_API_KEY` | for Claude | Turns on Claude parsing, reminder writing and the tool-use assistant (`claude-sonnet-5-5`) |
+| `ANTHROPIC_BASE_URL` | optional | Point the Anthropic SDK at a gateway, e.g. Vercel AI Gateway |
+| `KV_REST_API_URL`, `KV_REST_API_TOKEN` | optional | Upstash Redis for durable storage; without them a local JSON file is used |
+
+`GET /api/health` reports which of these are active (`aiMode`, `storage`, `paypal`).
+
+## Drive it from a terminal
+
+Every action is a JSON API, so a coding agent (Claude Code, Cursor, a shell script) can run the whole circle without the UI. Set `BASE=https://chitfund-agent.vercel.app` or `BASE=http://localhost:3000`.
+
+```bash
+# 1. Create a circle from a sentence (Claude when a key is present, fallback parser otherwise)
+curl -s -X POST $BASE/api/circles -H 'Content-Type: application/json' \
+  -d '{"description":"Six friends, $50 a month starting next month, lottery draw. Call it Marina Beach Circle."}' | jq '{id,name,members:(.members|length),parsedBy}'
+
+# 2. List circles
+curl -s $BASE/api/circles | jq
+
+# 3. Run a cycle: first 4 members pay, the other 2 get PayPal reminders; forceDraw pays out anyway
+curl -s -X POST $BASE/api/circles/$ID/simulate -H 'Content-Type: application/json' \
+  -d '{"payCount":4,"nudge":true,"forceDraw":true}' | jq '.cycles[-1] | {label,collected,winnerId,payout}'
+
+# 4. Nudge whoever is still unpaid in the current cycle
+curl -s -X POST $BASE/api/circles/$ID/nudge | jq '.ledger[0]'
+
+# 5. Ask the assistant
+curl -s -X POST $BASE/api/circles/$ID/chat -H 'Content-Type: application/json' \
+  -d '{"question":"who still owes this month and when is Meena'"'"'s turn?"}' | jq
+
+# 6. Seed the reviewer sample (idempotent) and open it
+curl -s -X POST $BASE/api/seed | jq '{id,name,sample,cycles:(.cycles|length),created}'
+```
+
 ## Deploy
 
 Vercel: import the repo, add the env vars from `.env.example`, optionally add Upstash Redis (the file store is memory-only on serverless). Add `https://<your-app>/api/webhooks/paypal` as a webhook for `INVOICING.INVOICE.PAID` in the PayPal app settings.

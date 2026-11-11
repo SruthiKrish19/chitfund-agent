@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
+import SampleBadge from "@/components/SampleBadge";
 import { AgGridReact } from "ag-grid-react";
 import { AllCommunityModule, ModuleRegistry, themeQuartz, type ColDef } from "ag-grid-community";
 import type { Circle, Cycle, LedgerEntry } from "@/lib/types";
@@ -9,7 +10,7 @@ const theme = themeQuartz.withParams({ accentColor: "#d97706", borderRadius: 8, 
 
 type ChatMsg = { role: "user" | "assistant"; content: string; tools?: string[] };
 
-export default function CircleDashboard({ initial }: { initial: Circle }) {
+export default function CircleDashboard({ initial, aiMode = "fallback" }: { initial: Circle; aiMode?: "claude" | "fallback" }) {
   const [circle, setCircle] = useState<Circle>(initial);
   const [payCount, setPayCount] = useState(initial.members.length);
   const [busy, setBusy] = useState<string | null>(null);
@@ -79,7 +80,7 @@ export default function CircleDashboard({ initial }: { initial: Circle }) {
   const memberRows = useMemo(
     () =>
       circle.members.map((m) => {
-        const row: Record<string, unknown> = { id: m.id, name: m.name, email: m.email, won: m.wonCycle ? `Cycle ${m.wonCycle}` : "" };
+        const row: Record<string, unknown> = { id: m.id, name: m.name, email: m.email, won: m.wonCycle ? `Cycle ${m.wonCycle}` : "", sample: circle.sample ?? false };
         let paidTotal = 0;
         for (const c of circle.cycles) {
           const inv = c.invoices.find((i) => i.memberId === m.id);
@@ -103,7 +104,18 @@ export default function CircleDashboard({ initial }: { initial: Circle }) {
       return v ? <span className={`rounded px-2 py-0.5 text-xs font-medium ${cls}`}>{v}</span> : null;
     };
     const cols: ColDef[] = [
-      { field: "name", headerName: "Member", pinned: "left", width: 130 },
+      {
+        field: "name",
+        headerName: "Member",
+        pinned: "left",
+        width: 150,
+        cellRenderer: (p: { value?: string; data?: { sample?: boolean } }) => (
+          <span className="inline-flex items-center gap-1.5">
+            {p.value}
+            {p.data?.sample && <SampleBadge />}
+          </span>
+        ),
+      },
       { field: "email", headerName: "PayPal email", width: 230 },
       ...circle.cycles.map<ColDef>((c) => ({ field: `c${c.index}`, headerName: c.label, width: 120, cellRenderer: statusCell })),
       { field: "paidTotal", headerName: "Paid total", width: 110, valueFormatter: (p) => `$${Number(p.value ?? 0).toFixed(2)}` },
@@ -174,7 +186,10 @@ export default function CircleDashboard({ initial }: { initial: Circle }) {
       {/* header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{circle.name}</h1>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold">
+            {circle.name}
+            {circle.sample && <SampleBadge className="translate-y-px" />}
+          </h1>
           <p className="mt-1 text-sm text-stone-600">
             {circle.members.length} members · {circle.currency} {circle.contribution.toFixed(2)} per {circle.cadence.toLowerCase()} · {circle.drawMode} draw · starts {circle.startDate}
             {circle.foremanCommissionPct ? ` · ${circle.foremanCommissionPct}% foreman commission` : ""}
@@ -240,7 +255,14 @@ export default function CircleDashboard({ initial }: { initial: Circle }) {
 
         {/* chat */}
         <div className="flex h-80 flex-col rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
-          <h2 className="font-medium">Ask the circle</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-medium">Ask the circle</h2>
+            {aiMode === "fallback" && (
+              <span title="No ANTHROPIC_API_KEY on this instance; answers come from the deterministic fallback" className="rounded border border-stone-300 bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-600">
+                Fallback mode
+              </span>
+            )}
+          </div>
           <div className="mt-2 flex-1 space-y-2 overflow-y-auto text-sm">
             {chat.length === 0 && <p className="text-xs text-stone-500">Try: &quot;what do I still owe?&quot;, &quot;when is Meena&apos;s turn?&quot;, &quot;what if Ravi drops out?&quot;</p>}
             {chat.map((m, i) => (

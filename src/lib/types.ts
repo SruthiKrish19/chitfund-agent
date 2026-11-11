@@ -82,6 +82,8 @@ export interface Circle {
   recurringSeriesId?: string;
   createdAt: string;
   parsedBy: "claude" | "fallback";
+  /** Seeded for reviewers of the hosted demo; shown with a SAMPLE badge. */
+  sample?: boolean;
 }
 
 export interface CircleSpec {

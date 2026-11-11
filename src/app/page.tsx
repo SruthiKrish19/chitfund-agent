@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CreateForm from "@/components/CreateForm";
+import SampleBadge from "@/components/SampleBadge";
 import { getStore } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,10 @@ export default async function Home() {
           <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {circles.map((c) => (
               <Link key={c.id} href={`/circles/${c.id}`} className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm hover:border-amber-400">
-                <div className="font-medium">{c.name}</div>
+                <div className="flex items-center gap-2 font-medium">
+                  <span className="truncate">{c.name}</span>
+                  {c.sample && <SampleBadge />}
+                </div>
                 <div className="mt-1 text-sm text-stone-600">
                   {c.members.length} members · {c.currency} {c.contribution.toFixed(2)} / {c.cadence.toLowerCase()} · {c.drawMode}
                 </div>

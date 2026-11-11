@@ -7,7 +7,23 @@ export const runtime = "nodejs";
 export async function GET() {
   const store = await getStore();
   const circles = await store.listCircles();
-  return ok(circles.map((c) => ({ id: c.id, name: c.name, members: c.members.length, cyclesRun: c.cycles.length, contribution: c.contribution, drawMode: c.drawMode, createdAt: c.createdAt })));
+  return ok(
+    circles.map((c) => ({
+      id: c.id,
+      name: c.name,
+      sample: c.sample ?? false,
+      members: c.members.length,
+      cyclesRun: c.cycles.length,
+      cyclesTotal: c.members.length,
+      contribution: c.contribution,
+      currency: c.currency,
+      cadence: c.cadence,
+      drawMode: c.drawMode,
+      parsedBy: c.parsedBy,
+      createdAt: c.createdAt,
+      url: `/circles/${c.id}`,
+    })),
+  );
 }
 
 export async function POST(req: Request) {

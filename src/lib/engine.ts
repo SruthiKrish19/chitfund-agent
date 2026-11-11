@@ -27,7 +27,7 @@ function cycleLabel(startDate: string, index: number, cadence: Circle["cadence"]
     : d.toLocaleString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
 }
 
-export async function createCircle(description: string, opts: { buyerEmail?: string } = {}): Promise<Circle> {
+export async function createCircle(description: string, opts: { buyerEmail?: string; sample?: boolean } = {}): Promise<Circle> {
   const { spec, parsedBy } = await parseCircle(description);
   const members: Member[] = Array.from({ length: spec.memberCount }, (_, i) => {
     const name = spec.memberNames?.[i] ?? DEMO_NAMES[i % DEMO_NAMES.length] + (i >= DEMO_NAMES.length ? ` ${i}` : "");
@@ -52,6 +52,7 @@ export async function createCircle(description: string, opts: { buyerEmail?: str
     ledger: [],
     createdAt: new Date().toISOString(),
     parsedBy,
+    ...(opts.sample ? { sample: true } : {}),
   };
   log(circle, {
     kind: "CIRCLE_CREATED",
