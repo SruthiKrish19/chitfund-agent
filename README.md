@@ -1,5 +1,8 @@
 # ChitCircle
 
+**Live demo:** https://chitfund-agent.vercel.app  
+**Hackathon:** PayPal AI Hackathon 2026 (Devpost)
+
 **An AI agent that runs a chit fund (rotating savings circle) end to end on PayPal.**
 Built for the PayPal AI Hackathon 2026. MIT licensed.
 
